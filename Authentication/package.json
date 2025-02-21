@@ -1,0 +1,43 @@
+{
+  "name": "teamsync",
+  "version": "1.0.0",
+  "description": "TeamSync is an innovative platform designed for managers to monitor, track, and collaborate with remote employees in real time. With live video streaming, screen monitoring, and built-in messaging, TeamSync ensures transparency, accountability, and seamless communication between teams.",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js",
+    "dev": "nodemon app.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/OwaisNazir09/TeamSync.git"
+  },
+  "keywords": [
+    "remote-work",
+    "team-monitoring",
+    "screen-sharing",
+    "live-tracking",
+    "real-time-collaboration",
+    "productivity",
+    "employee-tracking",
+    "work-management",
+    "team-management",
+    "video-conferencing",
+    "voice-chat"
+  ],
+  "author": "\"author\": \"Owaais Nazir <owaisaalam38@gmail.com>",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/OwaisNazir09/TeamSync/issues"
+  },
+  "homepage": "https://github.com/OwaisNazir09/TeamSync#readme",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "mongoose": "^8.10.0",
+    "nodemon": "^3.1.9",
+    "pm2": "^5.4.3",
+    "socket.io": "^4.8.1"
+  }
+}

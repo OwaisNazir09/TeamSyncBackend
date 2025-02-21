@@ -1,0 +1,15 @@
+# Node modules
+node_modules/
+
+# Environment variables
+.env
+
+
+# Editor & OS files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+
+'Authentication/package-lock.json
