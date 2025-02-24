@@ -2,29 +2,23 @@ require('dotenv').config();
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
-
 const app = express();
 const PORT = process.env.PORT || 3000;
 const authRoutes = require('./routes/router');
 
 // Middleware
+app.use(cors());
 app.use(express.json());
-app.use(cors()); 
+app.use(express.urlencoded({ extended: true })); 
 
 
-mongoose.connect(process.env.MONGOOSE_CONNECTION, {
-    useNewUrlParser: true,  
-    useUnifiedTopology: true,
-})
+
+mongoose.connect(process.env.MONGOOSE_CONNECTION,)
     .then(() => console.log("Users database connected successfully"))
     .catch((err) => console.error(" MongoDB Connection Error:", err));
 
 
-app.get('/', (req, res) => {
-    res.send("Hello world");
-});
-
-app.use('/api/auth', authRoutes);
+app.use('/auth', authRoutes);
 
 app.listen(PORT, () => {
     console.log(`🚀 Server running at http://localhost:${PORT}`);
@@ -94,6 +88,6 @@ app.listen(PORT, () => {
 //     });
 // });
 
-// server.listen(3000, () => { 
+// server.listen(3000, () => {
 //     console.log('Server running at http://localhost:3000');
 // });
