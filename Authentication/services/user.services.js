@@ -1,27 +1,39 @@
-const { generateOtp } = require('../Controllers/usercontroller');
-const user = require('../model/user');
-
-const createuser = async (data) => {
+const User = require('../model/user');
+const createUser = async (data) => {
     try {
-        const existingUser = await user.findOne({ phone_number: data.phone_number });
+        console.log("Received data for user creation:", data);
+
+        const existingUser = await User.findOne({ email: data.email });
         if (existingUser) {
-            return { status: "failed", message: "User already exists with this phone number" };
+            return { status: "failed", message: "User already exists with this email" };
         }
 
-        const usercreation = await user.create(data);
+        const newUser = await User.create(data);
+        console.log("User created successfully:", newUser);
 
-        if (!usercreation) {
-            return { status: "failed", message: "User creation failed" };
-        }
-
-        return { status: "success", message: "User created successfully", user: usercreation };
+        return { status: "success", message: "User created successfully", user: newUser };
     } catch (error) {
-        console.error(error);
+        console.error("Error creating user:", error);
         return { status: "failed", message: "Error creating user", error: error.message };
     }
 };
 
+const loginDetails = async (email) => {
+    try {
+        console.log("Checking user with email:", email);
+
+        const user = await User.findOne({ email });
+        if (!user) {
+            return { status: "failed", message: "User not found" };
+        }
+
+        return { status: "success", message: "User found successfully", user };
+    } catch (error) {
+        return { status: "failed", message: "Error finding user", error: error.message };
+    }
+};
+
 module.exports = {
-    createuser,
-    generateOtp,
+    createUser,
+    loginDetails
 };

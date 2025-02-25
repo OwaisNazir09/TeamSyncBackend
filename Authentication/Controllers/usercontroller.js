@@ -1,31 +1,46 @@
 require('dotenv').config();
 const userservice = require('../services/user.services');
 const nodemailer = require("nodemailer");
- const OTPModel = require("../model/otpModel")
-
+const OTPModel = require("../model/otpModel")
 
 const registerUser = async (req, res) => {
     try {
-        console.log(req.body);
+        const { first_name, last_name, email, date_of_birth, gender, password, phone_number, otp } = req.body;
 
-        const { first_name, last_name, date_of_birth, gender, password, phone_number } = req.body;
-
-        if (!first_name || !last_name || !date_of_birth || !gender || !password || !phone_number) {
+        if (!first_name || !last_name || !email || !date_of_birth || !gender || !password || !phone_number || !otp) {
             return res.status(400).json({
                 status: "failed",
-                message: "The following fields are required: first_name, last_name, date_of_birth, gender, password, phone_number"
+                message: "All fields are required"
             });
         }
 
-        const userUpdateStatus = await userservice.createuser(req.body);
+        const existingUser = await userservice.loginDetails(email);
+        if (existingUser.status === "success") {
+            return res.status(400).json({ status: "failed", message: "Email is already registered" });
+        }
 
+        const matchedOtp = await OTPModel.findOne({ email, otp: otp.toString().trim() });
+
+
+        if (!matchedOtp) {
+            return res.status(400).json({ message: "Incorrect OTP" });
+        }
+
+        const currentTime = new Date();
+        if (matchedOtp.expiresAt < currentTime) {
+            return res.status(400).json({ message: "OTP has expired" });
+        }
+
+        const userUpdateStatus = await userservice.createUser(req.body);
         if (userUpdateStatus.status === "failed") {
             return res.status(500).json(userUpdateStatus);
         }
 
+        console.log("User registered successfully");
         return res.status(201).json(userUpdateStatus);
-    } catch (error) {
 
+    } catch (error) {
+        console.error("Internal Server Error:", error);
         return res.status(500).json({ status: "failed", message: "Internal Server Error" });
     }
 };
@@ -38,6 +53,8 @@ const generateOtp = async (req, res) => {
         const OTP = Math.floor(100000 + Math.random() * 900000).toString();
         const otpExpiry = new Date(Date.now() + 5 * 60 * 1000);
 
+        console.log(OTP)
+
         await OTPModel.findOneAndUpdate(
             { email },
             { otp: OTP, expiresAt: otpExpiry },
@@ -45,22 +62,32 @@ const generateOtp = async (req, res) => {
         );
 
         const transporter = nodemailer.createTransport({
-            host: "smtp.mail.yahoo.com",
-            port: 465, 
-            secure: true,
+            service: "gmail",
             auth: {
-                user: process.env.EMAIL_USER, 
-                pass: process.env.EMAIL_PASS, 
+                user: process.env.EMAIL_USER,
+                pass: process.env.EMAIL_PASS,
             },
         });
-        
 
         const mailOptions = {
             from: process.env.EMAIL_USER,
             to: email,
-            subject: "Your OTP Code",
-            text: `Your OTP for teamsync is : ${OTP}. It expires in 5 minutes.`,
+            subject: "TeamSync: Your One-Time Password (OTP)",
+            html: `
+                <div style="font-family: Arial, sans-serif; padding: 20px;">
+                    <img src="https://team-sync-09eeee.vercel.app/assets/teamsyncLogo-DKjNVLKK.png" alt="TeamSync Logo" width="150" style="display: block; margin-bottom: 20px;">
+                    <h2 style="color: #333;">Your One-Time Password (OTP)</h2>
+                    <p>Dear User,</p>
+                    <p>Your OTP for TeamSync is: <strong style="font-size: 18px; color: #007BFF;">${OTP}</strong></p>
+                    <p>This OTP is valid for the next <strong>5 minutes</strong>. Please do not share it with anyone for security reasons.</p>
+                    <p>If you did not request this OTP, please ignore this email.</p>
+                    <br>
+                    <p style="font-size: 14px; color: #666;">Best regards,</p>
+                    <p style="font-size: 14px; color: #666;">TeamSync Support</p>
+                </div>
+            `,
         };
+
 
 
         transporter.sendMail(mailOptions, (error, info) => {
@@ -77,8 +104,49 @@ const generateOtp = async (req, res) => {
     }
 };
 
+const login = async (req, res) => {
+    const { email, password, otp } = req.body;
+
+    if (!email || !password || !otp) {
+        return res.status(400).json({
+            status: "Failed",
+            message: "All fields are required"
+        });
+    }
+
+    try {
+        const loginStatus = await userservice.loginDetails(email);
+        if (loginStatus.status === "failed") {
+            return res.status(404).json({ status: "failed", message: "Email not registered" });
+        }
+
+        const matchedOtp = await OTPModel.findOne({ email: email, otp: otp });
+        if (!matchedOtp) {
+            return res.status(400).json({ message: "Incorrect OTP" });
+        }
+
+
+        const currentTime = new Date();
+        if (matchedOtp.expiresAt < currentTime) {
+            return res.status(400).json({ message: "OTP has expired" });
+        }
+
+
+        if (loginStatus.user.password === password) {
+            return res.status(200).json({ message: "Login successful", status: "success" });
+        } else {
+            return res.status(400).json({ message: "Incorrect password" });
+        }
+
+    } catch (error) {
+        console.error("Internal Server Error:", error);
+        return res.status(500).json({ message: "Internal Server Error" });
+    }
+};
+
 
 module.exports = {
     registerUser,
     generateOtp,
+    login
 };

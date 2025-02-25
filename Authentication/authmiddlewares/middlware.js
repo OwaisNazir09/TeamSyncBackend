@@ -1,7 +1,11 @@
+require('dotenv').config();
+const crypto = require('crypto');
+const SALT = process.env.SALT;
+
+
 const validateUser = (req, res, next) => {
     const { first_name, last_name, email, password, phone_number, date_of_birth, gender } = req.body;
 
-    // Check for missing fields
     const missingFields = [];
     if (!first_name) missingFields.push("first_name");
     if (!last_name) missingFields.push("last_name");
@@ -44,7 +48,27 @@ const validateUser = (req, res, next) => {
         });
     }
 
-    next(); // Proceed to the next middleware
+    next(); 
 };
 
-module.exports = validateUser;
+const hashPassword = (req, res, next) => {
+    try {
+        const { password } = req.body;
+
+        if (!password) {
+            return res.status(400).json({
+                status: "failed",
+                reason: "Provide a password"
+            });
+        }
+
+        const hashedPassword = crypto.pbkdf2Sync(password, SALT, 100000, 64, 'sha256').toString('hex');
+
+        req.body.password = hashedPassword;
+
+        next();
+    } catch (error) {
+        res.status(500).json({ status: "error", message: error.message });
+    }
+};
+module.exports = { validateUser, hashPassword }
