@@ -1,5 +1,6 @@
 require('dotenv').config();
 const userservice = require('../services/user.services');
+const jwt = require('jsonwebtoken');
 const nodemailer = require("nodemailer");
 const OTPModel = require("../model/otpModel")
 
@@ -103,10 +104,9 @@ const generateOtp = async (req, res) => {
         res.status(500).json({ message: "Internal Server Error" });
     }
 };
-
 const login = async (req, res) => {
     const { email, password, otp } = req.body;
-
+    console.log(req.body)
     if (!email || !password || !otp) {
         return res.status(400).json({
             status: "Failed",
@@ -125,15 +125,29 @@ const login = async (req, res) => {
             return res.status(400).json({ message: "Incorrect OTP" });
         }
 
-
         const currentTime = new Date();
         if (matchedOtp.expiresAt < currentTime) {
             return res.status(400).json({ message: "OTP has expired" });
         }
 
-
         if (loginStatus.user.password === password) {
-            return res.status(200).json({ message: "Login successful", status: "success" });
+            console.log("Generating token...");
+            const token = jwt.sign(
+                { userId: loginStatus.user._id, email: loginStatus.user.email },
+                process.env.SECRET_KEY_FOR_JWT,
+                { expiresIn: '1h' }
+            );
+            console.log(token);
+            console.log("Setting token cookie...");
+            res.cookie('token', token);
+            console.log("Token cookie set successfully");
+
+            return res.status(200).json({
+                message: "Login successful",
+                status: "success",
+                token
+            });
+
         } else {
             return res.status(400).json({ message: "Incorrect password" });
         }
@@ -143,6 +157,7 @@ const login = async (req, res) => {
         return res.status(500).json({ message: "Internal Server Error" });
     }
 };
+
 
 
 module.exports = {
