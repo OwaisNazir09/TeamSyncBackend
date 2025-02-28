@@ -13,7 +13,7 @@ const adminroutes = require("./routes/adminroutes");
 // Middleware
 app.use(cors({
     origin: (origin, callback) => {
-        const allowedOrigins = ['http://localhost:5173', 'https://team-sync-09eeee.vercel.app/'];
+        const allowedOrigins = ['http://localhost:5173', 'https://team-sync-09eeee.vercel.app'];
         if (!origin || allowedOrigins.includes(origin)) {
             callback(null, true);
         } else {
