@@ -12,11 +12,17 @@ const adminroutes = require("./routes/adminroutes");
 
 // Middleware
 app.use(cors({
-    origin: '*',
-    credentials: true,
-    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
-    allowedHeaders: 'Origin, X-Requested-With, Content-Type, Accept, Authorization'
+    origin: (origin, callback) => {
+        const allowedOrigins = ['http://localhost:5173', 'https://team-sync-09eeee.vercel.app/'];
+        if (!origin || allowedOrigins.includes(origin)) {
+            callback(null, true);
+        } else {
+            callback(new Error('Not allowed by CORS'));
+        }
+    },
+    credentials: true
 }));
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
