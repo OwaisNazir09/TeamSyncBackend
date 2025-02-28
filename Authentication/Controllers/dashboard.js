@@ -15,13 +15,14 @@ const usedashboard = async (req, res) => {
             return res.status(404).json({ status: "failed", message: "User not found" });
         }
 
-        const taskDetails = await dashboardService.dashboardstats(user._id);
-        if (!taskDetails || taskDetails.status === "failed") {
+        const dashboardstats = await dashboardService.dashboardstats(user._id);
+
+        if (!dashboardstats || dashboardstats.status === "failed") {
             return res.status(404).json({ status: "failed", message: "No dashboard stats found" });
         }
 
 
-        const tasks = taskDetails.tasks;
+        const tasks = dashboardstats.tasks;
 
         const statusCounts = tasks.reduce((acc, task) => {
             const status = task.taskstatus.toLowerCase();
@@ -42,7 +43,7 @@ const usedashboard = async (req, res) => {
 
 
         console.log("Dashboard data retrieved successfully");
-        return res.status(200).json({ taskDetails, performanceData });
+        return res.status(200).json({ dashboardstats, performanceData });
 
 
     } catch (error) {
@@ -50,19 +51,29 @@ const usedashboard = async (req, res) => {
         return res.status(500).json({ status: "failed", message: "Internal Server Error" });
     }
 };
+
 const createnote = async (req, res) => {
-    const email = req.cookies.email;
-    const note = req.body.note;
+    const email = req.user.email;
+    const { title } = req.body;
+    const note = req.body.text;
+
     if (!email) {
-        return res.status(401).json({ status: "failed", message: "Unauthorized - No email found in token" });
+        return res.status(401).json({ status: "failed", message: "token doest conatin email" });
     }
 
-    const user = await User.findOne({ email }); 
+    console.log(title)
+    console.log(title)
+    if (!title || !note) {
+
+        return res.status(400).json({ status: "failed", message: "AlL fiels req" });
+    }
+
+    const user = await User.findOne({ email });
     if (!user) {
         return res.status(404).json({ status: "failed", message: "User not found" });
     }
 
-    const creatednote = await dashboardService.createnoteService({ note, userId: user._id }); 
+    const creatednote = await dashboardService.createnoteService({ note, title, userId: user._id });
 
     if (!creatednote || creatednote.status === "failed") {
         return res.status(500).json({ status: "failed", message: "Error creating note" });
@@ -71,4 +82,20 @@ const createnote = async (req, res) => {
     return res.status(200).json({ creatednote });
 };
 
-module.exports = { usedashboard, createnote };
+const deletenote = async (req, res) => {
+    const { id } = req.query;
+    if (!id) {
+
+        return res.status(400).json({ status: "failed", message: "qury required" });
+    }
+
+    const deletenote = await dashboardService.deletenoteService(id);
+
+    if (!deletenote || deletenote.status === "failed") {
+        return res.status(500).json({ status: "failed", message: "Error deleating  note" });
+    }
+
+    return res.status(200).json({ deletenote });
+};
+
+module.exports = { usedashboard, deletenote, createnote };

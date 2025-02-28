@@ -3,12 +3,15 @@ const users = require("./user");
 
 const personalnotes = new mongoose.Schema(
     {
+        title: {
+            type: String,
+        },
         text: {
             type: String,
         },
         createdby: {
             type: mongoose.Schema.Types.ObjectId,
-            ref: "users", 
+            ref: "users",
         },
     },
     { timestamps: true }

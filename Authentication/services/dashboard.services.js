@@ -4,6 +4,7 @@ const notes = require("../model/personalnotes");
 
 const dashboardstats = async (assignedTo) => {
     try {
+        console.log(assignedTo)
         console.log("Fetching tasks for user ID:", assignedTo);
 
         const user = await User.findById(assignedTo);
@@ -13,7 +14,7 @@ const dashboardstats = async (assignedTo) => {
 
         const tasks = await Task.find({ assignedTo });
 
-        console.log("Tasks assigned:", tasks);
+        const personalnotes = await notes.find({ createdby: assignedTo }).sort({ createdAt: -1 });
 
         return {
             status: "success",
@@ -23,16 +24,16 @@ const dashboardstats = async (assignedTo) => {
                 last_name: user.last_name,
                 email: user.email
             },
-            tasks
+            tasks, personalnotes
         };
     } catch (error) {
         console.error("Error fetching dashboard data:", error);
         return { status: "failed", message: "Server error", error: error.message };
     }
 };
-const createnoteService = async ({ note, userId }) => {
+const createnoteService = async ({ note, title, userId }) => {
     try {
-        const creatednote = await notes.create({ text: note, createdby: userId });
+        const creatednote = await notes.create({ text: note, title: title, createdby: userId });
 
         if (!creatednote) {
             return {
@@ -40,7 +41,6 @@ const createnoteService = async ({ note, userId }) => {
                 message: "Unable to store note",
             };
         }
-
         return {
             status: "success",
             message: "Note saved successfully",
@@ -51,7 +51,28 @@ const createnoteService = async ({ note, userId }) => {
         return { status: "failed", message: "Server error", error: error.message };
     }
 };
+const deletenoteService = async (id) => {
+    try {
+       
+        const deletedNote = await notes.findOneAndDelete({ _id:id });
 
+      
+        if (!deletedNote) {
+            return {
+                status: "failed",
+                message: "Note not found or already deleted",
+            };
+        }
 
+        return {
+            status: "success",
+            message: "Note deleted successfully",
+            data: deletedNote,
+        };
+    } catch (error) {
+        console.error("Error in deletenoteService:", error);
+        return { status: "failed", message: "Server error", error: error.message };
+    }
+};
 
-module.exports = { dashboardstats, createnoteService };
+module.exports = { dashboardstats, createnoteService, deletenoteService };
