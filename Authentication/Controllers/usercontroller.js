@@ -139,7 +139,12 @@ const login = async (req, res) => {
             );
             console.log(token);
             console.log("Setting token cookie...");
-            res.cookie('token', token);
+            res.cookie("token", token, {
+                httpOnly: true,
+                secure: true,
+                sameSite: "None"
+            });
+
             console.log("Token cookie set successfully");
 
             return res.status(200).json({
