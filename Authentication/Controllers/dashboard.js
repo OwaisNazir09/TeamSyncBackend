@@ -41,7 +41,6 @@ const usedashboard = async (req, res) => {
 
 
 
-
         console.log("Dashboard data retrieved successfully");
         return res.status(200).json({ dashboardstats, performanceData });
 
@@ -83,6 +82,7 @@ const createnote = async (req, res) => {
 };
 
 const deletenote = async (req, res) => {
+
     const { id } = req.query;
     if (!id) {
 
@@ -98,4 +98,82 @@ const deletenote = async (req, res) => {
     return res.status(200).json({ deletenote });
 };
 
-module.exports = { usedashboard, deletenote, createnote };
+
+const logout = async (req, res) => {
+    const email = req.user.email;
+    if (!email) {
+        return res.status(401).json({ status: "failed", message: "Token does not contain email" });
+    }
+    res.clearCookie("token", {
+        httpOnly: true,
+        secure: true,
+        sameSite: "None",
+    });
+
+    return res.status(200).json({ status: "success", message: "Logged out successfully" });
+};
+const updatetask = async (req, res) => {
+    const { id, status } = req.body;
+    if (!id || !status) {
+        return res.status(400).json({ status: "failed", message: "AL fields required " });
+    }
+
+    const updatetaskdetail = await dashboardService.updatetask(id, status);
+
+    if (!updatetaskdetail || updatetaskdetail.status === "failed") {
+        return res.status(500).json({ status: "failed", message: "Error upadting task  " });
+    }
+
+    return res.status(200).json({ status: "success", message: "task upadted successfully successfully", updatetaskdetail });
+
+}
+
+const startAttendance = async (req, res) => {
+    const { userId } = req.user;
+
+    const result = await dashboardService.startAttendance(userId);
+    if (!result || result.status === "failed") {
+        return res.status(500).json({ status: "failed", message: "Error starting attendance" });
+    }
+
+    return res.status(200).json({ status: "success", message: "Attendance started successfully", data: result });
+};
+
+const startBreak = async (req, res) => {
+    const { userId } = req.user;
+
+    const result = await dashboardService.startBreak(userId);
+    if (!result || result.status === "failed") {
+        return res.status(500).json({ status: "failed", message: "Error starting break" });
+    }
+
+    return res.status(200).json({ status: "success", message: "Break started successfully", data: result });
+};
+
+const endBreak = async (req, res) => {
+    const { userId } = req.user;
+
+    const result = await dashboardService.endBreak(userId);
+    if (!result || result.status === "failed") {
+        return res.status(500).json({ status: "failed", message: "Error ending break" });
+    }
+
+    return res.status(200).json({ status: "success", message: "Break ended successfully", data: result });
+};
+
+const endAttendance = async (req, res) => {
+    const { userId } = req.user;
+
+    const result = await dashboardService.endAttendance(userId);
+    if (!result || result.status === "failed") {
+        return res.status(500).json({ status: "failed", message: "Error ending attendance" });
+    }
+
+    return res.status(200).json({ status: "success", message: "Attendance ended successfully", data: result });
+};
+
+
+
+
+
+module.exports = { usedashboard, updatetask, logout, deletenote, createnote, startAttendance, startBreak, endBreak, endAttendance, };

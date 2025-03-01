@@ -71,4 +71,15 @@ const hashPassword = (req, res, next) => {
         res.status(500).json({ status: "error", message: error.message });
     }
 };
-module.exports = { validateUser, hashPassword }
+
+const isAdmin = (req, res, next) => {
+    if (req.user.role === "admin") {
+        next();
+    } else {
+        return res.status(403).json({ status: "failed", message: "Access denied. Admins only" });
+    }
+};
+
+
+
+module.exports = { validateUser, hashPassword ,isAdmin}

@@ -133,12 +133,18 @@ const login = async (req, res) => {
         if (loginStatus.user.password === password) {
             console.log("Generating token...");
             const token = jwt.sign(
-                { userId: loginStatus.user._id, email: loginStatus.user.email },
+                {
+                   userId: loginStatus.user._id,
+                    email: loginStatus.user.email,
+                    role: loginStatus.user.role,
+                },
                 process.env.SECRET_KEY_FOR_JWT,
                 { expiresIn: '1h' }
             );
             console.log(token);
             console.log("Setting token cookie...");
+
+
             res.cookie("token", token, {
                 httpOnly: true,
                 secure: true,
