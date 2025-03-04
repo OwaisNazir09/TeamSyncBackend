@@ -1,5 +1,6 @@
 const Task = require("../model/tasks");
 const User = require("../model/user");
+const Team = require("../model/team");
 const Notices = require("../model/notices");
 
 const createtask = async ({ email, title, assignedTo, taskstatus, dueDate }) => {
@@ -92,4 +93,99 @@ const updateTask = async (taskId, updates) => {
     }
 };
 
-module.exports = { createtask, createNotice, deleteNotice,deleteTask, updateTask };
+
+const createTeam = async ({ name, description, members, createdBy }) => {
+    try {
+        const updateteamCreated = await User.findOneAndUpdate(
+            { _id: createdBy },
+            { $set: { teamCreted: "yes" } },
+            { new: true }
+        );
+
+        const userRecords = await User.find({ email: { $in: members } }).select("_id");
+
+        const memberIds = userRecords.map(user => user._id);
+
+        if (memberIds.length !== members.length) {
+            return { status: "failed", message: "Some emails do not match any users" };
+        }
+
+        const newTeam = await Team.create({
+            name,
+            description,
+            members: memberIds,
+            createdBy,
+
+        });
+        return {
+            status: "success",
+            message: "Team created successfully",
+            team: newTeam,
+            updateteamCreated
+        };
+    } catch (error) {
+        console.error("Error creating team:", error);
+        return { status: "failed", message: "Server error", error: error.message };
+    }
+};
+
+
+
+const deleteTeam = async (teamId) => {
+    try {
+        const deletedTeam = await Team.findByIdAndDelete(teamId);
+        return deletedTeam;
+    } catch (error) {
+        console.error("Error in deleteTeam service:", error);
+        throw error;
+    }
+};
+const addUserToTeam = async (teamId, userIds) => {
+    try {
+        const updatedTeam = await Team.findByIdAndUpdate(
+            teamId,
+            { $addToSet: { members: { $each: userIds } } }, // Prevents duplicates
+            { new: true }
+        );
+
+        return updatedTeam;
+    } catch (error) {
+        console.error("Error in addUserToTeam service:", error);
+        throw error;
+    }
+};
+const removeUserFromTeam = async (teamId, userIds) => {
+    try {
+        const updatedTeam = await Team.findByIdAndUpdate(
+            teamId,
+            { $pull: { members: { $in: userIds } } },
+            { new: true }
+        );
+
+        return updatedTeam;
+    } catch (error) {
+        console.error("Error in removeUserFromTeam service:", error);
+        throw error;
+    }
+};
+
+const getTeamDetails = async (userId) => {
+    try {
+        return await Team.findOne({ createdBy: userId }).populate("members", "email name");
+    } catch (error) {
+        console.error("Error in service layer:", error);
+        throw error;
+    }
+};
+
+const findTeamByAdmin = async (adminId) => {
+    try {
+        return await Team.findOne({ createdBy: adminId }).populate("_id");
+    } catch (error) {
+        console.error("Error in service layer:", error);
+        throw error;
+    }
+}
+
+
+module.exports = { createtask, getTeamDetails, findTeamByAdmin, removeUserFromTeam, deleteTeam, addUserToTeam, createTeam, createNotice, deleteNotice, deleteTask, updateTask };

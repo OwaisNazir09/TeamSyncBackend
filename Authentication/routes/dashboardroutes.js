@@ -16,4 +16,12 @@ router.put("/startbreak", verifyToken, dashboardController.startBreak);
 router.put("/endbreak", verifyToken, dashboardController.endBreak);
 router.put("/endattendance", verifyToken, dashboardController.endAttendance);
 
+//for User
+router.get("/user/profilestats", verifyToken, dashboardController.profilestats);
+router.put("/user/update-profile", verifyToken, dashboardController.updateUser);
+router.put("/user/update-employment", verifyToken, dashboardController.updateEmployment);
+router.put("/user/update-contact", verifyToken, dashboardController.updateContact);
+
+
+
 module.exports = router;

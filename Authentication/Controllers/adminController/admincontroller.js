@@ -80,7 +80,7 @@ const updateTask = async (req, res) => {
 
 const createnotice = async (req, res) => {
     try {
-        const { email, title, description, teamId } = req.body;
+        const { email, title, description, teamId} = req.body;
 
         if (!email) {
             return res.status(400).json({ status: "failed", message: "Email is required" });
@@ -113,6 +113,7 @@ const createnotice = async (req, res) => {
         return res.status(500).json({ status: "failed", message: "Server error", error: error.message });
     }
 };
+
 const deleteNotice = async (req, res) => {
     try {
         const { noticeId } = req.params;
@@ -134,7 +135,124 @@ const deleteNotice = async (req, res) => {
         return res.status(500).json({ status: "failed", message: "Server error", error: error.message });
     }
 };
+const createTeam = async (req, res) => {
+    try {
+        const { name, description, members } = req.body;
+        const createdBy = req.user.userId;
+
+        if (!name) {
+            return res.status(400).json({ status: "failed", message: "Team name is required" });
+        }
+
+        const createdTeam = await admin.createTeam({ name, description, members, createdBy });
+
+        if (createdTeam.status === "success") {
+            return res.status(201).json({ status: "success", team: createdTeam.team });
+        }
+
+        return res.status(500).json({ status: "failed", message: "Team creation failed" });
+    } catch (error) {
+        console.error("Error creating team:", error);
+        return res.status(500).json({ status: "failed", message: "Server error", error: error.message });
+    }
+};
+const deleteTeam = async (req, res) => {
+    try {
+        const adminId = req.user.userId; 
+        
+        const team = await admin.findTeamByAdmin(adminId);
+        
+        if (!team) {
+            return res.status(404).json({ status: "failed", message: "No team found for this admin" });
+        }
+
+        const deletedTeam = await admin.deleteTeam(team._id);
+
+        return res.status(200).json({ status: "success", message: "Team deleted successfully",deletedTeam });
+    } catch (error) {
+        console.error("Error deleting team:", error);
+        return res.status(500).json({ status: "failed", message: "Server error", error: error.message });
+    }
+};
+
+
+const addUserToTeam = async (req, res) => {
+    try {
+        const { userEmails } = req.body;
+        const userId = req.user.userId; 
+
+        const team = await Team.findOne({ createdBy: userId });
+
+        if (!team) {
+            return res.status(404).json({ status: "failed", message: "No team found for this user" });
+        }
+
+        const userRecords = await User.find({ email: { $in: userEmails } }).select("_id");
+        const userIds = userRecords.map(user => user._id);
+
+        if (userIds.length === 0) {
+            return res.status(404).json({ status: "failed", message: "No users found with these emails" });
+        }
+
+        const updatedTeam = await admin.addUserToTeam(team._id, userIds);
+
+        return res.status(200).json({
+            status: "success",
+            message: "Users added to the team successfully",
+            updatedTeam,
+        });
+    } catch (error) {
+        console.error("Error adding users to team:", error);
+        return res.status(500).json({ status: "failed", message: "Server error", error: error.message });
+    }
+};
+const removeUserFromTeam = async (req, res) => {
+    try {
+        const { userEmails } = req.body;
+        const userId = req.user.userId;
+
+        const team = await Team.findOne({ createdBy: userId });
+
+        if (!team) {
+            return res.status(404).json({ status: "failed", message: "No team found for this user" });
+        }
+
+        const userRecords = await User.find({ email: { $in: userEmails } }).select("_id");
+        const userIds = userRecords.map(user => user._id);
+
+        if (userIds.length === 0) {
+            return res.status(404).json({ status: "failed", message: "No users found with these emails" });
+        }
+
+        const updatedTeam = await admin.removeUserFromTeam(team._id, userIds);
+
+        return res.status(200).json({
+            status: "success",
+            message: "Users removed from the team successfully",
+            updatedTeam,
+        });
+    } catch (error) {
+        console.error("Error removing users from team:", error);
+        return res.status(500).json({ status: "failed", message: "Server error", error: error.message });
+    }
+};
+
+const getTeamDetails = async (req, res) => {
+    try {
+        const userId = req.user.userId;
+        const team = await admin.getTeamDetails(userId);
+
+        if (!team) {
+            return res.status(404).json({ message: "No team found for this user." });
+        }
+
+        res.status(200).json(team);
+    } catch (error) {
+        console.error("Error fetching team details:", error);
+        res.status(500).json({ message: "Server error." });
+    }
+};
 
 
 
-module.exports = { createtask, createnotice,deleteNotice ,deleteTask, updateTask};
+module.exports = { createtask, createTeam, getTeamDetails, deleteTeam, createnotice, deleteNotice, deleteTask, updateTask, addUserToTeam, removeUserFromTeam };

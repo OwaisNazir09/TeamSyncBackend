@@ -3,7 +3,9 @@ const User = require("../model/user");
 const Notes = require("../model/personalnotes");
 const Team = require("../model/team")
 const Notice = require("../model/notices")
+const userContact = require("../model/Contact")
 const Attendance = require("../model/attendance")
+const userEmployment = require("../model/Employment")
 
 const dashboardstats = async (userId) => {
     try {
@@ -23,6 +25,9 @@ const dashboardstats = async (userId) => {
             $or: [{ members: userId }, { createdBy: userId }]
         }).populate("createdBy", "first_name last_name email");
 
+        const workLog = await Attendance.findOne({ userId }).sort({ date: -1 });
+
+
         const notices = team
             ? await Notice.find({ team: team._id })
                 .populate("createdBy", "first_name last_name email")
@@ -36,7 +41,8 @@ const dashboardstats = async (userId) => {
             tasks,
             personalnotes,
             team,
-            notices
+            notices,
+            workLog
         };
     } catch (error) {
         console.error("Error fetching dashboard data:", error);
@@ -115,7 +121,7 @@ const updatetask = async (id, status) => {
 };
 const startAttendance = async (userId) => {
     try {
-        const newAttendance = new Attendance({ userId, startTime: new Date() });
+        const newAttendance = new Attendance({ userId, isPresent: "yes", startTime: new Date() });
         await newAttendance.save();
 
         return {
@@ -164,12 +170,13 @@ const endAttendance = async (userId) => {
         if (!attendance) return { status: "failed", message: "No active session found" };
 
         attendance.endTime = new Date();
+        attendance.isPresent = "no";
 
         const totalMilliseconds =
             attendance.endTime - attendance.startTime -
             attendance.breakTimes.reduce((acc, breakTime) => acc + (breakTime.end - breakTime.start || 0), 0);
 
-        attendance.totalHours = totalMilliseconds / (1000 * 60 * 60); // Convert to hours
+        attendance.totalHours = totalMilliseconds / (1000 * 60 * 60);
         await attendance.save();
 
         return { status: "success", message: "Attendance ended", data: attendance };
@@ -179,4 +186,93 @@ const endAttendance = async (userId) => {
 };
 
 
-module.exports = { dashboardstats, updatetask, createnoteService, deletenoteService, startAttendance, startBreak, endBreak, endAttendance };
+
+const getProfileStats = async ({ email }) => {
+    try {
+        const user = await User.findOne({ email }).select("-password");
+        if (!user) {
+            return { status: "failed", message: "User not found" };
+        }
+
+        console.log(user)
+        const userId = user._id;
+        console.log(userId)
+
+        const employmentDetails = await userEmployment.findOne({ userId });
+        const contactDetails = await userContact.findOne({ userId });
+        return {
+            status: "success",
+            message: "Profile stats retrieved successfully",
+            data: {
+                user,
+                employment: employmentDetails || {},
+                contact: contactDetails || {},
+            },
+        };
+    } catch (error) {
+        console.error("Error fetching profile stats:", error);
+        return { status: "failed", message: "Server error", error: error.message };
+    }
+};
+const updateUserProfile = async ({ email, data }) => {
+    try {
+        const updatedUser = await User.findOneAndUpdate(
+            { email },
+            data,
+            { new: true }
+        );
+
+        if (!updatedUser) {
+            return { status: "failed", message: "User not found" };
+        }
+
+        return { status: "success", message: "Profile updated", data: updatedUser };
+    } catch (error) {
+        console.error("Error updating profile:", error);
+        return { status: "failed", message: "Server error", error: error.message };
+    }
+};
+
+const updateEmploymentDetails = async ({ email, data }) => {
+    try {
+        const user = await User.findOne({ email });
+        if (!user) return { status: "failed", message: "User not found" };
+
+        const updatedEmployment = await userEmployment.findOneAndUpdate(
+            { userId: user._id },
+            data,
+            { new: true, upsert: true }
+        );
+
+        return { status: "success", message: "Employment details updated", data: updatedEmployment };
+    } catch (error) {
+        console.error("Error updating employment details:", error);
+        return { status: "failed", message: "Server error", error: error.message };
+    }
+};
+
+const updateContactDetails = async ({ email, data }) => {
+    try {
+        const user = await User.findOne({ email });
+        if (!user) return { status: "failed", message: "User not found" };
+
+        const updatedContact = await userContact.findOneAndUpdate(
+            { userId: user._id },
+            data,
+            { new: true, upsert: true }
+        );
+
+        return { status: "success", message: "Contact details updated", data: updatedContact };
+    } catch (error) {
+        console.error("Error updating contact details:", error);
+        return { status: "failed", message: "Server error", error: error.message };
+    }
+};
+
+
+
+module.exports = {
+    dashboardstats, updateUserProfile,
+    updateEmploymentDetails,
+    updateContactDetails, getProfileStats, updatetask, createnoteService, deletenoteService, startAttendance, startBreak, endBreak, endAttendance
+};

@@ -35,7 +35,7 @@ mongoose.connect(process.env.MONGOOSE_CONNECTION,)
 
 app.use('/auth', Authrouter);
 app.use('/dashboard', dashboardroutes);
-app.use("/api", teamRoutes);
+app.use("/team", teamRoutes);
 app.use("/admin", adminroutes);
 
 

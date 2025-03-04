@@ -134,7 +134,7 @@ const login = async (req, res) => {
             console.log("Generating token...");
             const token = jwt.sign(
                 {
-                   userId: loginStatus.user._id,
+                    userId: loginStatus.user._id,
                     email: loginStatus.user.email,
                     role: loginStatus.user.role,
                 },
@@ -153,10 +153,17 @@ const login = async (req, res) => {
 
             console.log("Token cookie set successfully");
 
+            const user = {
+                email: loginStatus.user.email,
+                role: loginStatus.user.role,
+            }
+
             return res.status(200).json({
                 message: "Login successful",
                 status: "success",
-                token
+                token,
+                user
+
             });
 
         } else {

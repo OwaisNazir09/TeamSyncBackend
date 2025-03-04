@@ -1,5 +1,4 @@
 const mongoose = require("mongoose");
-const users = require("./user");
 
 const teamSchema = new mongoose.Schema(
     {
@@ -7,13 +6,27 @@ const teamSchema = new mongoose.Schema(
             type: String,
             required: true,
         },
-        members: [{
-            type: mongoose.Schema.Types.ObjectId,
-            ref: "users",
-        }],
+        description: {
+            type: String,
+        },
+        logo: {
+            type: String,
+        },
+        members: [
+            {
+                type: mongoose.Schema.Types.ObjectId,
+                ref: "users",
+            }
+        ],
+
         createdBy: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "users",
+        },
+        status: {
+            type: String,
+            enum: ["Active", "Inactive"],
+            default: "Active",
         },
     },
     { timestamps: true }

@@ -173,7 +173,75 @@ const endAttendance = async (req, res) => {
 };
 
 
+const profilestats = async (req, res) => {
+    const email = req.user.email;
+    if (!email) {
+        return res.status(401).json({ status: "failed", message: "Token does not contain email" });
+    }
+
+    const userStats = await dashboardService.getProfileStats({ email });
+
+    if (!userStats || userStats.status === "failed") {
+        return res.status(500).json({ status: "failed", message: "Error fetching profile stats" });
+    }
+
+    return res.status(200).json({ userStats });
+};
+const updateUser = async (req, res) => {
+    try {
+        const email = req.user.email;
+        const updatedUser = await dashboardService.updateUserProfile({ email, data: req.body });
+
+        if (updatedUser.status === "failed") {
+            return res.status(400).json(updatedUser);
+        }
+
+        return res.status(200).json(updatedUser);
+    } catch (error) {
+        console.error("Error updating user profile:", error);
+        res.status(500).json({ status: "failed", message: "Server error", error: error.message });
+    }
+};
+
+// Update employment details
+const updateEmployment = async (req, res) => {
+    try {
+        const email = req.user.email;
+        const result = await dashboardService.updateEmploymentDetails({ email, data: req.body });
+
+        if (result.status === "failed") {
+            return res.status(400).json(result);
+        }
+
+        return res.status(200).json(result);
+    } catch (error) {
+        console.error("Error updating employment details:", error);
+        res.status(500).json({ status: "failed", message: "Server error", error: error.message });
+    }
+};
+
+// Update contact details
+const updateContact = async (req, res) => {
+    try {
+        const email = req.user.email;
+        const result = await dashboardService.updateContactDetails({ email, data: req.body });
+
+        if (result.status === "failed") {
+            return res.status(400).json(result);
+        }
+
+        return res.status(200).json(result);
+    } catch (error) {
+        console.error("Error updating contact details:", error);
+        res.status(500).json({ status: "failed", message: "Server error", error: error.message });
+    }
+};
 
 
 
-module.exports = { usedashboard, updatetask, logout, deletenote, createnote, startAttendance, startBreak, endBreak, endAttendance, };
+
+module.exports = {
+    usedashboard, updateUser,
+    updateEmployment,
+    updateContact, updatetask, logout, profilestats, deletenote, createnote, startAttendance, startBreak, endBreak, endAttendance,
+};
