@@ -220,7 +220,6 @@ const updateEmployment = async (req, res) => {
     }
 };
 
-// Update contact details
 const updateContact = async (req, res) => {
     try {
         const email = req.user.email;

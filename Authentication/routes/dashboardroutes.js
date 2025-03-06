@@ -4,7 +4,6 @@ const dashboardController = require('../Controllers/dashboard');
 
 const router = express.Router();
 
-router.get("/logout", verifyToken, dashboardController.logout);
 router.get("/dashboardstats", verifyToken, dashboardController.usedashboard);
 router.post("/createnote", verifyToken, dashboardController.createnote);
 router.delete("/deletenote", verifyToken, dashboardController.deletenote);

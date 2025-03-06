@@ -4,22 +4,17 @@ const admin = require("../../services/admin.services");
 const Notices = require("../../model/notices");
 const createtask = async (req, res) => {
     try {
-        const { email, title, taskstatus, dueDate } = req.body;
+        const { assignedTo, title, taskstatus, dueDate } = req.body;
 
-        if (!email) {
-            return res.status(400).json({ status: "failed", message: "Email is required" });
+        if (!assignedTo) {
+            return res.status(400).json({ status: "failed", message: "assignedTo is required" });
         }
         if (!title || !taskstatus || !dueDate) {
             return res.status(400).json({ status: "failed", message: "All fields are required" });
         }
 
-        const user = await User.findOne({ email });
-        if (!user) {
-            return res.status(404).json({ status: "failed", message: "User not found" });
-        }
-        const assignedTouser = user._id;
 
-        const createdTask = await admin.createtask({ email, title, assignedTo: assignedTouser, taskstatus, dueDate });
+        const createdTask = await admin.createtask({ title, assignedTo, taskstatus, dueDate });
 
         if (createdTask.status === "success") {
             return res.status(201).json({ status: "success", task: createdTask.task });
@@ -34,7 +29,7 @@ const createtask = async (req, res) => {
 };
 const deleteTask = async (req, res) => {
     try {
-        const { taskId } = req.params;
+        const { taskId } = req.body;
 
         if (!taskId) {
             return res.status(400).json({ status: "failed", message: "Task ID is required" });
@@ -56,8 +51,7 @@ const deleteTask = async (req, res) => {
 
 const updateTask = async (req, res) => {
     try {
-        const { taskId } = req.params;
-        const { title, taskstatus, dueDate } = req.body;
+        const { taskId, title, taskstatus, dueDate } = req.body;
 
         if (!taskId) {
             return res.status(400).json({ status: "failed", message: "Task ID is required" });
@@ -77,30 +71,41 @@ const updateTask = async (req, res) => {
     }
 };
 
+const viewTasks = async (req, res) => {
+    try {
+        const adminId = req.user.userId;
+
+        const tasks = await admin.getTeamTasks(adminId);
+
+        res.status(200).json({ success: true, tasks });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+
 
 const createnotice = async (req, res) => {
     try {
-        const { email, title, description, teamId} = req.body;
+        const { title, description } = req.body;
+        const userId = req.user.userId;
 
-        if (!email) {
-            return res.status(400).json({ status: "failed", message: "Email is required" });
-        }
-        if (!title || !description || !teamId) {
-            return res.status(400).json({ status: "failed", message: "All fields are required" });
+        if (!title || !description) {
+            return res.status(400).json({ status: "failed", message: "Title and description are required" });
         }
 
-        const user = await User.findOne({ email });
-        if (!user) {
-            return res.status(404).json({ status: "failed", message: "User not found" });
-        }
-        const createdBy = user._id;
+        const team = await Team.findOne({ createdBy: userId });
 
-        const team = await Team.findById(teamId);
         if (!team) {
-            return res.status(404).json({ status: "failed", message: "Team not found" });
+            return res.status(404).json({ status: "failed", message: "Team not found for this admin" });
         }
 
-        const createdNotice = await admin.createNotice({ title, description, createdBy, team: teamId });
+        const createdNotice = await admin.createNotice({
+            title,
+            description,
+            createdBy: userId,
+            team: team._id
+        });
 
         if (createdNotice.status === "success") {
             return res.status(201).json({ status: "success", notice: createdNotice.notice });
@@ -116,7 +121,9 @@ const createnotice = async (req, res) => {
 
 const deleteNotice = async (req, res) => {
     try {
-        const { noticeId } = req.params;
+        const { id: noticeId } = req.body;
+        console.log("Deleting notice with ID:", noticeId);
+
 
         if (!noticeId) {
             return res.status(400).json({ status: "failed", message: "Notice ID is required" });
@@ -135,6 +142,8 @@ const deleteNotice = async (req, res) => {
         return res.status(500).json({ status: "failed", message: "Server error", error: error.message });
     }
 };
+
+
 const createTeam = async (req, res) => {
     try {
         const { name, description, members } = req.body;
@@ -158,17 +167,17 @@ const createTeam = async (req, res) => {
 };
 const deleteTeam = async (req, res) => {
     try {
-        const adminId = req.user.userId; 
-        
+        const adminId = req.user.userId;
+
         const team = await admin.findTeamByAdmin(adminId);
-        
+
         if (!team) {
             return res.status(404).json({ status: "failed", message: "No team found for this admin" });
         }
 
         const deletedTeam = await admin.deleteTeam(team._id);
 
-        return res.status(200).json({ status: "success", message: "Team deleted successfully",deletedTeam });
+        return res.status(200).json({ status: "success", message: "Team deleted successfully", deletedTeam });
     } catch (error) {
         console.error("Error deleting team:", error);
         return res.status(500).json({ status: "failed", message: "Server error", error: error.message });
@@ -179,7 +188,7 @@ const deleteTeam = async (req, res) => {
 const addUserToTeam = async (req, res) => {
     try {
         const { userEmails } = req.body;
-        const userId = req.user.userId; 
+        const userId = req.user.userId;
 
         const team = await Team.findOne({ createdBy: userId });
 
@@ -252,7 +261,46 @@ const getTeamDetails = async (req, res) => {
         res.status(500).json({ message: "Server error." });
     }
 };
+const getNoticesWithTeams = async (req, res) => {
+    try {
+        const userId = req.user.userId;
+
+        const notices = await admin.getNoticesWithTeams(userId);
+
+        return res.status(200).json({ status: "success", notices });
+    } catch (error) {
+        console.error("Error fetching notices:", error);
+        return res.status(500).json({ status: "failed", message: "Server error", error: error.message });
+    }
+};
+const getAdminDashboard = async (req, res) => {
+    try {
+        const email = req.user?.email;
+        console.log("Received admin dashboard request for email:", email);
+
+        if (!email) {
+            return res.status(401).json({ status: "failed", message: "Unauthorized - No email found in token" });
+        }
+
+        const adminrole = await User.findOne({ email, role: "admin" });
+        if (!adminrole) {
+            return res.status(403).json({ status: "failed", message: "Access denied - Admin only" });
+        }
+
+        const dashboardData = await admin.getAdminStats(adminrole._id);
+
+        if (!dashboardData || dashboardData.status === "failed") {
+            return res.status(404).json({ status: "failed", message: "No admin dashboard data found" });
+        }
+
+        console.log("Admin dashboard data retrieved successfully");
+        return res.status(200).json(dashboardData);
+    } catch (error) {
+        console.error("Internal Server Error:", error);
+        return res.status(500).json({ status: "failed", message: "Internal Server Error" });
+    }
+};
 
 
 
-module.exports = { createtask, createTeam, getTeamDetails, deleteTeam, createnotice, deleteNotice, deleteTask, updateTask, addUserToTeam, removeUserFromTeam };
+module.exports = { createtask, viewTasks,getAdminDashboard, getNoticesWithTeams, createTeam, getTeamDetails, deleteTeam, createnotice, deleteNotice, deleteTask, updateTask, addUserToTeam, removeUserFromTeam };

@@ -2,6 +2,7 @@ const Task = require("../model/tasks");
 const User = require("../model/user");
 const Team = require("../model/team");
 const Notices = require("../model/notices");
+const Attendance = require('../model/attendance')
 
 const createtask = async ({ email, title, assignedTo, taskstatus, dueDate }) => {
     try {
@@ -91,6 +92,33 @@ const updateTask = async (taskId, updates) => {
         console.error("Error updating task:", error);
         return { status: "failed", message: "Server error", error: error.message };
     }
+};
+
+
+
+
+const getTeamTasks = async (adminId) => {
+
+    const team = await Team.findOne({ createdBy: adminId });
+    if (!team) throw new Error("Team not found");
+
+    const memberIds = team.members.map((member) => member.toString());
+
+    const users = await User.find({ _id: { $in: memberIds } }).select("-password");
+
+    const tasks = await Task.find({ assignedTo: { $in: memberIds } });
+
+    const teamMembers = users.map((user) => {
+        return {
+            id: user._id,
+            name: user.name,
+            email: user.email,
+            role: user.role,
+            tasks: tasks.filter((task) => task.assignedTo.toString() === user._id.toString())
+        };
+    });
+
+    return { teamMembers };
 };
 
 
@@ -187,5 +215,94 @@ const findTeamByAdmin = async (adminId) => {
     }
 }
 
+const getNoticesWithTeams = async (userId) => {
+    const teams = await Team.find({ createdBy: userId });
+    const teamIds = teams.map(team => team._id);
 
-module.exports = { createtask, getTeamDetails, findTeamByAdmin, removeUserFromTeam, deleteTeam, addUserToTeam, createTeam, createNotice, deleteNotice, deleteTask, updateTask };
+    const notices = await Notices.find({ team: { $in: teamIds } })
+        .populate("team", "name")
+        .select("title description team createdAt");
+
+    return notices;
+};
+const getAdminStats = async (adminId) => {
+    try {
+        console.log("Fetching latest team data for admin ID:", adminId);
+
+        // Get the latest team created by the admin
+        const latestTeam = await Team.findOne({ createdBy: adminId })
+            .sort({ createdAt: -1 }) // Sorting in descending order to get the latest
+            .populate("members", "_id email first_name last_name joiningDate");
+
+        if (!latestTeam) {
+            return { status: "failed", message: "No teams found for this admin" };
+        }
+
+        // Extract unique members from the latest team
+        const uniqueMemberIds = new Set();
+        const teamMembers = [];
+
+        latestTeam.members.forEach(member => {
+            if (!uniqueMemberIds.has(member._id.toString())) {
+                uniqueMemberIds.add(member._id.toString());
+                teamMembers.push(member);
+            }
+        });
+
+        const teamMemberIds = Array.from(uniqueMemberIds);
+
+        // Fetch tasks assigned to team members
+        const tasks = await Task.find({ assignedTo: { $in: teamMemberIds } });
+
+        // Normalize taskstatus values to lowercase
+        const normalizedTasks = tasks.map(task => ({
+            ...task.toObject(),
+            taskstatus: task.taskstatus.toLowerCase(),
+        }));
+
+        // Fetch notices related to this latest team
+        const notices = await Notices.find({ team: latestTeam._id }).populate("createdBy", "first_name last_name email");
+
+        // Fetch attendance records for the team members
+        const attendanceRecords = await Attendance.find({ userId: { $in: teamMemberIds } }).sort({ date: -1 });
+
+        // Structure attendance by user
+        const attendanceByUser = {};
+        teamMembers.forEach(member => {
+            attendanceByUser[member._id] = attendanceRecords.filter(att => att.userId.toString() === member._id.toString());
+        });
+
+        // Count tasks by status
+        const totalTasks = normalizedTasks.length;
+        const completedTasks = normalizedTasks.filter(task => task.taskstatus === "completed").length;
+        const pendingTasks = normalizedTasks.filter(task => task.taskstatus === "pending").length;
+        const inProgressTasks = normalizedTasks.filter(task => task.taskstatus === "in progress").length;
+
+        return {
+            status: "success",
+            message: "Latest team data retrieved successfully",
+            latestTeamId: latestTeam._id,
+            latestTeamName: latestTeam.name,
+            totalTeamMembers: teamMembers.length, // Now correctly counts unique members
+            teamMembers: teamMembers.map(member => ({
+                _id: member._id,
+                email: member.email,
+                name: `${member.first_name} ${member.last_name}`,
+                joiningDate: member.joiningDate,
+                attendance: attendanceByUser[member._id] || [],
+            })),
+            totalTasks,
+            completedTasks,
+            pendingTasks,
+            inProgressTasks,
+            tasks: normalizedTasks,
+            notices,
+            attendance: attendanceRecords,
+        };
+    } catch (error) {
+        console.error("Error fetching latest team data:", error);
+        return { status: "failed", message: "Server error", error: error.message };
+    }
+};
+
+module.exports = { getAdminStats, createtask, getTeamTasks, getNoticesWithTeams, getTeamDetails, findTeamByAdmin, removeUserFromTeam, deleteTeam, addUserToTeam, createTeam, createNotice, deleteNotice, deleteTask, updateTask };
